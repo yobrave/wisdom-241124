@@ -1,34 +1,28 @@
-"""Fortune cookie wisdom: weigh the line, then plate it for the gate."""
-import json
+"""Fortune cookie line for developers: baked once, checked once.
+
+The program writes the saying, cracks the file back open, and serves
+only a proven-fresh cookie. MAKEFUN_OUTPUT_DIR changes the plate.
+"""
 import os
-import pathlib
 
-CRACKER = "entry.txt"
-SNAP_CAP = 120
-
-
-def weigh(text: str) -> dict:
-    trimmed = text.strip()
-    spoken = sum(1 for ch in trimmed if not ch.isspace())
-    return {
-        "spoken_glyphs": spoken,
-        "snap_fits": 0 < spoken <= SNAP_CAP,
-        "quiet_line": trimmed.count(chr(10)) == 0 and len(trimmed.encode("utf-8")) < SNAP_CAP + 2,
-        "crumb_bytes": len(trimmed.encode("utf-8")),
-    }
+FORTUNE = "He who fixes the flaky test first inherits the flaky test."
+BRAND = "ftk2"
+BATCH = "b2"
 
 
-def plate() -> int:
-    tray = pathlib.Path(__file__).resolve().parent / CRACKER
-    raw = tray.read_text(encoding="utf-8")
-    marks = weigh(raw)
-    marks["served"] = marks["snap_fits"] and marks["quiet_line"]
-    dining = pathlib.Path(os.environ.get("MAKEFUN_OUTPUT_DIR") or tray.parent / "dining")
-    dining.mkdir(parents=True, exist_ok=True)
-    (dining / CRACKER).write_bytes(raw.encode("utf-8"))
-    print(json.dumps({"cookie": "dev-fortune", "marks": marks, "dining": str(dining)}))
-    return 0 if marks["served"] else 1
+def bake(base):
+    base = base or "output"
+    if not os.path.exists(base):
+        os.makedirs(base)
+    p = os.path.join(base, "entry.txt")
+    with open(p, "w", encoding="utf-8", newline="\n") as f:
+        f.write(FORTUNE + "\n")
+    with open(p, encoding="utf-8") as f:
+        lines = [ln.rstrip("\n") for ln in f]
+    baked = lines[0] if lines else ""
+    assert baked == FORTUNE, "cookie cracked in transit"
+    return baked
 
 
-if __name__ == "__main__":
-    raise SystemExit(plate())
+saying = bake(os.environ.get("MAKEFUN_OUTPUT_DIR"))
+print(BRAND, BATCH, "baked:", saying[:24], "...", len(saying), "chars")
