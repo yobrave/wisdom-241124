@@ -1,1 +1,2 @@
-He who fixes the flaky test first inherits the flaky test.
+The code you delete before review is the wisest you will write all day.
+

@@ -1,28 +1,37 @@
-"""Fortune cookie line for developers: baked once, checked once.
-
-The program writes the saying, cracks the file back open, and serves
-only a proven-fresh cookie. MAKEFUN_OUTPUT_DIR changes the plate.
-"""
+import json
 import os
+from operator import itemgetter
 
-FORTUNE = "He who fixes the flaky test first inherits the flaky test."
-BRAND = "ftk2"
-BATCH = "b2"
-
-
-def bake(base):
-    base = base or "output"
-    if not os.path.exists(base):
-        os.makedirs(base)
-    p = os.path.join(base, "entry.txt")
-    with open(p, "w", encoding="utf-8", newline="\n") as f:
-        f.write(FORTUNE + "\n")
-    with open(p, encoding="utf-8") as f:
-        lines = [ln.rstrip("\n") for ln in f]
-    baked = lines[0] if lines else ""
-    assert baked == FORTUNE, "cookie cracked in transit"
-    return baked
+CRACK = "ftk3-cookie"
+SPAN = 120
 
 
-saying = bake(os.environ.get("MAKEFUN_OUTPUT_DIR"))
-print(BRAND, BATCH, "baked:", saying[:24], "...", len(saying), "chars")
+def crack(blob):
+    lines = list(filter(str.strip, blob.replace("\r", "").split("\n")))
+    if not lines:
+        return ""
+    return itemgetter(0)(lines)
+
+
+def foretell(line, root):
+    tray = os.environ.get("MAKEFUN_OUTPUT_DIR") or os.path.join(root, "output")
+    os.makedirs(tray, exist_ok=True)
+    slip = os.path.join(tray, "entry.txt")
+    ink = line.encode("utf-8")
+    with open(slip, "wb") as baker:
+        baker.write(ink)
+    with open(slip, "rb") as fortune:
+        if fortune.read() != ink:
+            raise RuntimeError("cookie crumbled wrong")
+    return slip
+
+
+root = os.path.dirname(os.path.abspath(__file__))
+with open(os.path.join(root, "entry.txt"), encoding="utf-8") as cookie:
+    line = crack(cookie.read())
+
+if not line.strip() or len(line) > SPAN:
+    print(json.dumps({"cookie": "empty", "size": len(line)}))
+    raise SystemExit(1)
+slip = foretell(line, root)
+print(json.dumps({"cookie": "served", "size": len(line), "span": SPAN, "crack": CRACK, "slip": os.path.basename(slip)}))
