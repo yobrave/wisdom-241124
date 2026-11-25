@@ -1,29 +1,28 @@
-# Fortune cookie wisdom for developers: validate + ship (batch r4).
-import json, os, pathlib
+"""Developer fortune cookie breaker."""
+import functools
+import json
+import os
+from pathlib import Path
 
-HARD_CAP = 120
-NICK = "ftk4-cookie-r4"
-
-
-def snap():
-    body = (pathlib.Path(__file__).resolve().parent / "entry.txt").read_text(encoding="utf-8").strip()
-    if len(body) < 1:
-        raise ValueError("empty entry")
-    if len(body) > HARD_CAP:
-        raise ValueError("too long: %d" % len(body))
-    return body
+CRACK_LIMIT = 120
+LOT = 1126
+root = Path(__file__).resolve().parent
 
 
-def place(body):
-    d = pathlib.Path(os.environ.get("MAKEFUN_OUTPUT_DIR") or "out")
-    d.mkdir(parents=True, exist_ok=True)
-    (d / "entry.txt").write_bytes((body + "\n").encode("utf-8"))
+def keep(acc, step):
+    name, fn = step
+    acc[name] = fn(acc)
+    return acc
 
 
-def main():
-    body = snap()
-    place(body)
-    print(json.dumps({"nick": NICK, "len": len(body), "cap": HARD_CAP, "done": True, "batch": "r4"}))
-
-
-main()
+steps = [
+    ("text", lambda _: (root / "entry.txt").read_bytes().decode("utf-8").strip()),
+    ("measure", lambda a: len(a["text"])),
+    ("cookie", lambda a: "crisp" if 1 <= a["measure"] <= CRACK_LIMIT else "dough"),
+]
+report = functools.reduce(keep, steps, {})
+if report["cookie"] == "crisp":
+    tray = Path(os.environ.get("MAKEFUN_OUTPUT_DIR") or "out")
+    tray.mkdir(parents=True, exist_ok=True)
+    (tray / "entry.txt").write_bytes(report["text"].encode("utf-8"))
+print(json.dumps({k: v for k, v in report.items() if k != "text"}))
